@@ -1,0 +1,26 @@
+<html>
+<script src='../../3rdparty/Sylvester/sylvester.js'></script>
+<script src='../../3rdparty/glUtils/glUtils.js'></script>
+<script src='test.js'></script>
+<script id="shader-vs" type="x-shader/x-vertex">
+  attribute vec3 aVertexPosition;
+
+  uniform mat4 uMVMatrix;
+  uniform mat4 uPMatrix;
+  
+  void main(void) {
+    gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
+  }
+</script>
+<script id="shader-fs" type="x-shader/x-fragment">
+  uniform mediump vec4 color;
+  void main(void) {
+    gl_FragColor = color;
+  }
+</script>
+<body onload="start()">
+  <canvas id="glcanvas" width="1280" height="720"> 
+    Votre navigateur ne semble pas supporter l'élément HTML5 <code>&lt;canvas&gt;</code>.
+  </canvas> 
+</body>
+</html>  
