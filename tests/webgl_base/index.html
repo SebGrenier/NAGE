@@ -4,23 +4,27 @@
 <script src='test.js'></script>
 <script id="shader-vs" type="x-shader/x-vertex">
   attribute vec3 aVertexPosition;
+  attribute vec4 aVertexColor;
 
   uniform mat4 uMVMatrix;
   uniform mat4 uPMatrix;
+
+  varying mediump vec4 vColor;
   
   void main(void) {
+    vColor = aVertexColor;
     gl_Position = uPMatrix * uMVMatrix * vec4(aVertexPosition, 1.0);
   }
 </script>
 <script id="shader-fs" type="x-shader/x-fragment">
-  uniform mediump vec4 color;
+  varying mediump vec4 vColor;
   void main(void) {
-    gl_FragColor = color;
+    gl_FragColor = vColor;
   }
 </script>
 <body onload="start()">
   <canvas id="glcanvas" width="1280" height="720"> 
-    Votre navigateur ne semble pas supporter l'élément HTML5 <code>&lt;canvas&gt;</code>.
+    Your browser does not support HTML5 <code>&lt;canvas&gt;</code>.
   </canvas> 
 </body>
 </html>  
