@@ -1,10 +1,13 @@
 var canvas;
+var textCanvas;
 var gl;
+var textContext;
 var mvMatrix;
-var shaderProgram;
-var vertexPositionAttribute;
-var vertexColorAttribute;
+var quadShader;
+var textShader;
 var perspectiveMatrix;
+
+var textQuads = [];
 
 var nodes = [{
     color: [1.0, 0.0, 0.0, 1],
@@ -12,8 +15,33 @@ var nodes = [{
     position: {
         x: 0.0,
         y: 0.0,
-        z: -1.0
-    }
+        z: 0.0
+    },
+    name: 'Bob',
+    font: 'Arial',
+    fontSize: '20px'
+}, {
+    color: [1.0, 1.0, 0.0, 1],
+    size: 200,
+    position: {
+        x: 500.0,
+        y: 0.0,
+        z: 0.0
+    },
+    name: 'Bob',
+    font: 'Arial',
+    fontSize: '20px'
+}, {
+    color: [1.0, 0.0, 1.0, 1],
+    size: 150,
+    position: {
+        x: 200.0,
+        y: 200.0,
+        z: 0.0
+    },
+    name: 'Bob',
+    font: 'Arial',
+    fontSize: '20px'
 }];
 
 var megaPositionBuffer = null;
@@ -28,10 +56,12 @@ var megaIndexBuffer = null;
 //
 function start() {
     canvas = document.getElementById("glcanvas");
+    textCanvas = document.getElementById('textCanvas');
 
     initNodes();
 
-    initWebGL(canvas);      // Initialize the GL context
+    initWebGL();      // Initialize the GL context
+    initTextContext();
 
     // Only continue if WebGL is available and working
 
@@ -51,9 +81,10 @@ function start() {
 
         initBuffers();
 
-        // Set up to draw the scene periodically.
+        generateTextQuadsBuffers();
 
-        setInterval(drawScene, 15);
+        // Set up to draw the scene periodically.
+        requestAnimationFrame(drawScene);
     }
 }
 
@@ -66,8 +97,11 @@ function initNodes () {
             position: {
                 x: (Math.random() - 0.5) * 500,
                 y: (Math.random() - 0.5) * 500,
-                z: -1.0
-            }
+                z: 0.0
+            },
+            font: 'Arial',
+            fontSize: '5px',
+            name: (1 + Math.random() * 100).toString()
         })
     }
 }
@@ -92,6 +126,48 @@ function initWebGL() {
     if (!gl) {
         alert("Unable to initialize WebGL. Your browser may not support it.");
     }
+}
+
+function initTextContext() {
+    var textCanvas = document.createElement("canvas");
+
+    try {
+        textContext = textCanvas.getContext("2d")
+    } catch (e) {
+    }
+
+    if (!textContext) {
+        alert('Failed to load HTML5 canvas');
+    }
+}
+
+function makeTextCanvas(text, width, height) {
+    textContext.canvas.width  = width;
+    textContext.canvas.height = height;
+    textContext.font = "20px monospace";
+    textContext.textAlign = "center";
+    textContext.textBaseline = "middle";
+    textContext.fillStyle = "black";
+    textContext.clearRect(0, 0, textContext.canvas.width, textContext.canvas.height);
+    textContext.fillText(text, width / 2, height / 2);
+    return textContext.canvas;
+}
+
+function generateTextureFromCanvas(_canvas) {
+    var textWidth  = _canvas.width;
+    var textHeight = _canvas.height;
+    var textTex = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, textTex);
+    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, _canvas);
+    // make sure we can render it even if it's not a power of 2
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+    return {
+        texture: textTex,
+        width: textWidth,
+        height: textHeight
+    };
 }
 
 //
@@ -150,7 +226,7 @@ function createMegaBuffer (nodes) {
         var size = 0.5 * node.size;
         allVertices[indexVertices] = size + node.position.x;
         allVertices[indexVertices+1] = size + node.position.y;
-        allVertices[indexVertices+2] = 0;
+        allVertices[indexVertices+2] = 0.0;
         allVertices[indexVertices+3] = -size + node.position.x;
         allVertices[indexVertices+4] = size + node.position.y;
         allVertices[indexVertices+5] = 0.0;
@@ -200,6 +276,64 @@ function createMegaBuffer (nodes) {
     return {position: positionBuffer, color: colorBuffer, index: indexBuffer};
 }
 
+function generateTextQuadsBuffers () {
+    var vertices = new Array(12);
+    var texCoords = new Array(8);
+    var indices = new Array(6);
+    for (var node of nodes) {
+        var _textCanvas = makeTextCanvas(node.name, node.size, node.size);
+        var texture = generateTextureFromCanvas(_textCanvas);
+        var size = 0.5 * node.size;
+        vertices[0] = size + node.position.x;
+        vertices[1] = size + node.position.y;
+        vertices[2] = 0.0;
+        vertices[3] = -size + node.position.x;
+        vertices[4] = size + node.position.y;
+        vertices[5] = 0.0;
+        vertices[6] = -size + node.position.x;
+        vertices[7] = -size + node.position.y;
+        vertices[8] = 0.0;
+        vertices[9] = size + node.position.x;
+        vertices[10] = -size + node.position.y;
+        vertices[11] = 0.0;
+
+        texCoords[0] = 1.0;
+        texCoords[1] = 0.0;
+        texCoords[2] = 0.0;
+        texCoords[3] = 0.0;
+        texCoords[4] = 0.0;
+        texCoords[5] = 1.0;
+        texCoords[6] = 1.0;
+        texCoords[7] = 1.0;
+
+        indices[0] = 0;
+        indices[1] = 1;
+        indices[2] = 2;
+        indices[3] = 2;
+        indices[4] = 3;
+        indices[5] = 0;
+
+        var positionBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+
+        var textureBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, textureBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texCoords), gl.STATIC_DRAW);
+
+        var indexBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+        gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
+
+        textQuads.push({
+            position: positionBuffer,
+            texCoords: textureBuffer,
+            index: indexBuffer,
+            texture: texture.texture
+        });
+    }
+}
+
 //
 // drawScene
 //
@@ -216,25 +350,69 @@ function drawScene() {
     // and 100 units away from the camera.
     var width = 1280;
     var height = 720;
-    perspectiveMatrix = makeFrustum(-width/2.0, width/2.0, -height/2.0, height/2.0, -1, 1);
+    perspectiveMatrix = makeOrtho(-width/2.0, width/2.0, -height/2.0, height/2.0, 0, 1);
 
     loadIdentity();
 
-    // The -1.0z translation is important!!!!
-    mvTranslate([-0.0, 0.0, -1.0]);
-
     // Draw the nodes by binding the array buffer to the nodes vertices
     // array, setting attributes, and pushing it to GL.
-    setMatrixUniforms();
+    gl.useProgram(quadShader.shaderProgram);
+    setMatrixUniforms(quadShader.shaderProgram);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, megaPositionBuffer);
-    gl.vertexAttribPointer(vertexPositionAttribute, 3, gl.FLOAT, false, 0, 0);
+    gl.vertexAttribPointer(quadShader.attributeLocations['aVertexPosition'], 3, gl.FLOAT, false, 0, 0);
 
     gl.bindBuffer(gl.ARRAY_BUFFER, megaColorBuffer);
-    gl.vertexAttribPointer(vertexColorAttribute, 4, gl.FLOAT, false, 0, 0);
+    gl.vertexAttribPointer(quadShader.attributeLocations['aVertexColor'], 4, gl.FLOAT, false, 0, 0);
 
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, megaIndexBuffer);
     gl.drawElements(gl.TRIANGLES, nodes.length * 6, gl.UNSIGNED_SHORT, 0);
+
+    // draw text buffers
+    gl.useProgram(textShader.shaderProgram);
+    setMatrixUniforms(textShader.shaderProgram);
+    gl.activeTexture(gl.TEXTURE0);
+    gl.uniform1i(gl.getUniformLocation(textShader.shaderProgram, "texture"), 0);
+
+    for (var textQuad of textQuads) {
+        gl.bindTexture(gl.TEXTURE_2D, textQuad.texture);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, textQuad.position);
+        gl.vertexAttribPointer(textShader.attributeLocations['aVertexPosition'], 3, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ARRAY_BUFFER, textQuad.texCoords);
+        gl.vertexAttribPointer(textShader.attributeLocations['aVertexTexCoord'], 2, gl.FLOAT, false, 0, 0);
+
+        gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, textQuad.index);
+        gl.drawElements(gl.TRIANGLES, 6, gl.UNSIGNED_SHORT, 0);
+    }
+
+
+    //drawText();
+
+    // request draw frame
+    requestAnimationFrame(drawScene);
+}
+
+function drawText() {
+    textContext.clearRect(0, 0, textCanvas.width, textCanvas.height);
+
+    textContext.save();
+
+    textContext.translate(textCanvas.width/2, textCanvas.height/2);
+    for (var node of nodes) {
+        textContext.textAlign = 'center';
+        textContext.font  = node.fontSize + ' ' + node.font;
+        textContext.fillText(node.name, node.position.x, node.position.y);
+    }
+
+    textContext.restore();
+}
+
+function drawTextOnContext(_context, text, x, y, options) {
+    _context.textAlign = options.textAlign;
+    _context.font  = options.fontSize + ' ' + options.font;
+    _context.fillText(text, x, y);
 }
 
 //
@@ -243,29 +421,50 @@ function drawScene() {
 // Initialize the shaders, so WebGL knows how to light our scene.
 //
 function initShaders() {
-    var fragmentShader = getShader(gl, "shader-fs");
-    var vertexShader = getShader(gl, "shader-vs");
+    quadShader = initShader("shader-vs", "shader-fs", null, ['aVertexPosition', 'aVertexColor']);
+    textShader = initShader("shader-text-vs", "shader-text-fs", null, ['aVertexPosition', 'aVertexTexCoord']);
+}
+
+function initShader(vertexShader, fragmentShader, uniforms, attributes) {
+    uniforms = uniforms || [];
+    attributes = attributes || [];
+
+    var fragmentShaderProg = getShader(gl, fragmentShader);
+    var vertexShaderProg = getShader(gl, vertexShader);
 
     // Create the shader program
 
-    shaderProgram = gl.createProgram();
-    gl.attachShader(shaderProgram, vertexShader);
-    gl.attachShader(shaderProgram, fragmentShader);
+    var shaderProgram = gl.createProgram();
+    gl.attachShader(shaderProgram, vertexShaderProg);
+    gl.attachShader(shaderProgram, fragmentShaderProg);
     gl.linkProgram(shaderProgram);
 
     // If creating the shader program failed, alert
-
     if (!gl.getProgramParameter(shaderProgram, gl.LINK_STATUS)) {
         alert("Unable to initialize the shader program.");
     }
 
     gl.useProgram(shaderProgram);
 
-    vertexPositionAttribute = gl.getAttribLocation(shaderProgram, "aVertexPosition");
-    gl.enableVertexAttribArray(vertexPositionAttribute);
+    var uniformLocations = {};
+    // for (var uniform of uniforms) {
+    //
+    // }
 
-    vertexColorAttribute = gl.getAttribLocation(shaderProgram, "aVertexColor");
-    gl.enableVertexAttribArray(vertexColorAttribute);
+    var attributeLocations = {};
+    for (var attribute of attributes) {
+        var attributeLocation = gl.getAttribLocation(shaderProgram, attribute);
+        gl.enableVertexAttribArray(attributeLocation);
+        attributeLocations[attribute] = attributeLocation;
+    }
+
+    gl.useProgram(null);
+
+    return {
+        shaderProgram: shaderProgram,
+        uniformLocations: uniformLocations,
+        attributeLocations: attributeLocations
+    };
 }
 
 //
@@ -344,7 +543,7 @@ function mvTranslate(v) {
     multMatrix(Matrix.Translation($V([v[0], v[1], v[2]])).ensure4x4());
 }
 
-function setMatrixUniforms() {
+function setMatrixUniforms(shaderProgram) {
     var pUniform = gl.getUniformLocation(shaderProgram, "uPMatrix");
     gl.uniformMatrix4fv(pUniform, false, new Float32Array(perspectiveMatrix.flatten()));
 
