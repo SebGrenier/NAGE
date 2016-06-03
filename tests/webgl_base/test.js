@@ -16,6 +16,22 @@ var textContextHelper = {
     texture: null
 };
 
+var cameraOptions = {
+    lookAt: [0, 0, 0],
+    zoom: 1.0,
+    extend: [0, 0, 0],
+    originalExtend: [0, 0, 0],
+    isDragging: false,
+    lastMousePosition: {
+        x: 0,
+        y: 0
+    },
+    lastGlobalMousePosition: {
+        x: 0,
+        y: 0
+    }
+};
+
 var nodes = [{
     color: [1.0, 0.0, 0.0, 1],
     size: 100,
@@ -61,13 +77,14 @@ var megaIndexBuffer = null;
 // Called when the canvas is created to get the ball rolling.
 // Figuratively, that is. There's nothing moving in this demo.
 //
-function start() {
+function start () {
     canvas = document.getElementById("glcanvas");
     textCanvas = document.getElementById('textCanvas');
 
     initNodes();
 
     initWebGL();      // Initialize the GL context
+    initWebGLMouseHandlers(canvas);
     initTextContext();
 
     // Only continue if WebGL is available and working
@@ -122,11 +139,13 @@ function initNodes () {
 // Initialize WebGL, returning the GL context or null if
 // WebGL isn't available or could not be initialized.
 //
-function initWebGL() {
+function initWebGL () {
     gl = null;
 
     try {
         gl = canvas.getContext("webgl");// || canvas.getContext("experimental-webgl");
+        cameraOptions.extend = [canvas.width / 2, canvas.height / 2, 0];
+        cameraOptions.originalExtend = [canvas.width / 2, canvas.height / 2, 0];
     }
     catch(e) {
     }
@@ -138,7 +157,70 @@ function initWebGL() {
     }
 }
 
-function initTextContext() {
+function initWebGLMouseHandlers (domElement) {
+    window.document.addEventListener('mousemove', onMouseMove, true);
+    domElement.addEventListener('mousedown', onMouseDown, true);
+    domElement.addEventListener('mouseout', onMouseOut, true);
+    domElement.addEventListener('mousewheel', onMouseWheel, true);
+    window.addEventListener('mouseup', onMouseUp, true);
+}
+
+function onMouseMove (event) {
+    if (cameraOptions.isDragging) {
+        var translation = [event.x - cameraOptions.lastGlobalMousePosition.x, cameraOptions.lastGlobalMousePosition.y - event.y, 0];
+        translation = [translation[0] * cameraOptions.zoom, translation[1] * cameraOptions.zoom, 0];
+        cameraOptions.lookAt = [cameraOptions.lookAt[0] + translation[0], cameraOptions.lookAt[1] + translation[1], cameraOptions.lookAt[2] + translation[2]];
+
+        cameraOptions.lastMousePosition = {
+            x: event.offsetX,
+            y: event.offsetY
+        };
+    }
+
+    cameraOptions.lastGlobalMousePosition = {
+        x: event.x,
+        y: event.y
+    };
+}
+
+function onMouseDown (event) {
+    console.log("mouse down");
+
+    cameraOptions.lastMousePosition = {
+        x: event.offsetX,
+        y: event.offsetY
+    };
+
+    cameraOptions.isDragging = true;
+}
+
+function onMouseOut (event) {
+
+}
+
+function onMouseUp (event) {
+    cameraOptions.isDragging = false;
+}
+
+function onMouseWheel (event) {
+    var delta = Math.max(-1, Math.min(1, event.wheelDelta));
+
+    if (delta > 0) {
+        cameraOptions.zoom -= 0.1;
+    }
+    if (delta < 0) {
+        cameraOptions.zoom += 0.1;
+    }
+
+    cameraOptions.zoom = Math.max(0, Math.min(2, cameraOptions.zoom));
+
+    cameraOptions.extend = [cameraOptions.originalExtend[0] * cameraOptions.zoom, cameraOptions.originalExtend[1] * cameraOptions.zoom, cameraOptions.originalExtend[2] * cameraOptions.zoom]
+
+    event.stopPropagation();
+    event.preventDefault();
+}
+
+function initTextContext () {
     //var textCanvas = document.createElement("canvas");
 
     try {
@@ -151,7 +233,7 @@ function initTextContext() {
     }
 }
 
-function makeTextCanvas(text, width, height) {
+function makeTextCanvas (text, width, height) {
     textContext.canvas.width  = width;
     textContext.canvas.height = height;
     textContext.font = "20px monospace";
@@ -163,7 +245,7 @@ function makeTextCanvas(text, width, height) {
     return textContext.canvas;
 }
 
-function generateTextureFromCanvas(_canvas) {
+function generateTextureFromCanvas (_canvas) {
     var textWidth  = _canvas.width;
     var textHeight = _canvas.height;
     var textTex = gl.createTexture();
@@ -186,7 +268,7 @@ function generateTextureFromCanvas(_canvas) {
 // Initialize the buffers we'll need. For this demo, we just have
 // one object -- a simple two-dimensional square.
 //
-function initBuffers() {
+function initBuffers () {
 
     // Create a buffer for the nodes
     var buffers = createMegaBuffer(nodes);
@@ -356,7 +438,7 @@ function generateTextQuadsBuffers () {
 //
 // Draw the scene.
 //
-function drawScene() {
+function drawScene () {
     // Clear the canvas before we start drawing on it.
 
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
@@ -365,11 +447,10 @@ function drawScene() {
     // scene. Our field of view is 45 degrees, with a width/height
     // ratio of 640:480, and we only want to see objects between 0.1 units
     // and 100 units away from the camera.
-    var width = 1280;
-    var height = 720;
-    perspectiveMatrix = makeOrtho(-width/2.0, width/2.0, -height/2.0, height/2.0, 0.0, 1.0);
+    perspectiveMatrix = makeOrtho(-cameraOptions.extend[0], cameraOptions.extend[0], -cameraOptions.extend[1], cameraOptions.extend[1], 0.0, 1.0);
 
     loadIdentity();
+    mvTranslate(cameraOptions.lookAt);
 
     // Draw the nodes by binding the array buffer to the nodes vertices
     // array, setting attributes, and pushing it to GL.
@@ -411,7 +492,7 @@ function drawScene() {
     requestAnimationFrame(drawScene);
 }
 
-function drawText() {
+function drawText () {
     textContext.clearRect(0, 0, textCanvas.width, textCanvas.height);
 
     textContext.save();
@@ -426,7 +507,7 @@ function drawText() {
     textContext.restore();
 }
 
-function drawTextForNodes(nodes, _context) {
+function drawTextForNodes (nodes, _context) {
     _context.clearRect(0, 0, textCanvas.width, textCanvas.height);
     _context.save();
 
@@ -439,13 +520,13 @@ function drawTextForNodes(nodes, _context) {
     return generateTextureFromCanvas(textCanvas);
 }
 
-function drawTextOnContext(_context, text, x, y, options) {
+function drawTextOnContext (_context, text, x, y, options) {
     _context.textAlign = options.textAlign;
     _context.font  = options.fontSize + ' ' + options.font;
     _context.fillText(text, x, y);
 }
 
-function pushTextOnContext(_context, text, options) {
+function pushTextOnContext (_context, text, options) {
     _context.textAlign = options.textAlign;
     _context.font  = options.fontSize + ' ' + options.font;
     var textMetrics = _context.measureText(text); // TextMetrics object
@@ -491,12 +572,12 @@ function pushTextOnContext(_context, text, options) {
 //
 // Initialize the shaders, so WebGL knows how to light our scene.
 //
-function initShaders() {
+function initShaders () {
     quadShader = initShader("shader-vs", "shader-fs", null, ['aVertexPosition', 'aVertexColor']);
     textShader = initShader("shader-text-vs", "shader-text-fs", null, ['aVertexPosition', 'aVertexTexCoord']);
 }
 
-function initShader(vertexShader, fragmentShader, uniforms, attributes) {
+function initShader (vertexShader, fragmentShader, uniforms, attributes) {
     uniforms = uniforms || [];
     attributes = attributes || [];
 
@@ -544,7 +625,7 @@ function initShader(vertexShader, fragmentShader, uniforms, attributes) {
 // Loads a shader program by scouring the current document,
 // looking for a script with the specified ID.
 //
-function getShader(gl, id) {
+function getShader (gl, id) {
     var shaderScript = document.getElementById(id);
 
     // Didn't find an element with the specified ID; abort.
@@ -602,19 +683,19 @@ function getShader(gl, id) {
 // Matrix utility functions
 //
 
-function loadIdentity() {
+function loadIdentity () {
     mvMatrix = Matrix.I(4);
 }
 
-function multMatrix(m) {
+function multMatrix (m) {
     mvMatrix = mvMatrix.x(m);
 }
 
-function mvTranslate(v) {
+function mvTranslate (v) {
     multMatrix(Matrix.Translation($V([v[0], v[1], v[2]])).ensure4x4());
 }
 
-function setMatrixUniforms(shaderProgram) {
+function setMatrixUniforms (shaderProgram) {
     var pUniform = gl.getUniformLocation(shaderProgram, "uPMatrix");
     gl.uniformMatrix4fv(pUniform, false, new Float32Array(perspectiveMatrix.flatten()));
 
