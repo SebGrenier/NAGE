@@ -140,7 +140,7 @@ function start () {
 }
 
 function initNodes () {
-    var nbNodes = 5000;
+    var nbNodes = 2000;
     for (var i = 0; i < nbNodes; i++) {
         var color = [Math.random(), Math.random(), Math.random(), 1];
         var highlightColor = [color[0] * 1.2, color[1] * 1.2, color[2] * 1.2, 1];
