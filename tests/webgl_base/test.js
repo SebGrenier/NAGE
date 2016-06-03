@@ -297,17 +297,19 @@ function generateTextQuadsBuffers () {
         var textureInfo = node.texttureInfo;
 
         var size = 0.5 * node.size;
-        vertices[0] = size + node.position.x;
-        vertices[1] = size + node.position.y;
+        var halfWidth = textureInfo.w / 2;
+        var halfHeight = textureInfo.h / 2;
+        vertices[0] = node.position.x + halfWidth;
+        vertices[1] = node.position.y + halfHeight;
         vertices[2] = 0.0;
-        vertices[3] = -size + node.position.x;
-        vertices[4] = size + node.position.y;
+        vertices[3] = node.position.x - halfWidth;
+        vertices[4] = node.position.y + halfHeight;
         vertices[5] = 0.0;
-        vertices[6] = -size + node.position.x;
-        vertices[7] = -size + node.position.y;
+        vertices[6] = node.position.x - halfWidth;
+        vertices[7] = node.position.y - halfHeight;
         vertices[8] = 0.0;
-        vertices[9] = size + node.position.x;
-        vertices[10] = -size + node.position.y;
+        vertices[9] = node.position.x + halfWidth;
+        vertices[10] = node.position.y - halfHeight;
         vertices[11] = 0.0;
 
         texCoords[0] = textureInfo.sEnd;
