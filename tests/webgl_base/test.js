@@ -17,7 +17,9 @@ var textContextHelper = {
 };
 
 var cameraOptions = {
-    lookAt: [0, 0, 0],
+    targetElement: null,
+    isInsideView: false,
+    translateMatrix: [0, 0, 0],
     zoom: 1.0,
     extend: [0, 0, 0],
     originalExtend: [0, 0, 0],
@@ -29,11 +31,23 @@ var cameraOptions = {
     lastGlobalMousePosition: {
         x: 0,
         y: 0
+    },
+    cameraViewPosition: {
+        x: 0,
+        y: 0
     }
 };
 
 var nodes = [{
     color: [1.0, 0.0, 0.0, 1],
+    state: {
+        normal: {
+            color: [1.0, 0.0, 0.0, 1]
+        },
+        highlight: {
+            color: [1.0, 0.2, 0.2, 1]
+        }
+    },
     size: 100,
     position: {
         x: 0.0,
@@ -45,6 +59,14 @@ var nodes = [{
     fontSize: '20px'
 }, {
     color: [1.0, 1.0, 0.0, 1],
+    state: {
+        normal: {
+            color: [1.0, 1.0, 0.0, 1]
+        },
+        highlight: {
+            color: [1.0, 1.0, 0.2, 1]
+        }
+    },
     size: 200,
     position: {
         x: 500.0,
@@ -56,6 +78,14 @@ var nodes = [{
     fontSize: '20px'
 }, {
     color: [1.0, 0.0, 1.0, 1],
+    state: {
+        normal: {
+            color: [1.0, 0.0, 1.0, 1]
+        },
+        highlight: {
+            color: [1.0, 0.2, 1.0, 1]
+        }
+    },
     size: 150,
     position: {
         x: 500.0,
@@ -71,12 +101,6 @@ var megaPositionBuffer = null;
 var megaColorBuffer = null;
 var megaIndexBuffer = null;
 
-//
-// start
-//
-// Called when the canvas is created to get the ball rolling.
-// Figuratively, that is. There's nothing moving in this demo.
-//
 function start () {
     canvas = document.getElementById("glcanvas");
     textCanvas = document.getElementById('textCanvas');
@@ -116,14 +140,24 @@ function start () {
 }
 
 function initNodes () {
-    var nbNodes = 1000;
+    var nbNodes = 5000;
     for (var i = 0; i < nbNodes; i++) {
+        var color = [Math.random(), Math.random(), Math.random(), 1];
+        var highlightColor = [color[0] * 1.2, color[1] * 1.2, color[2] * 1.2, 1];
         nodes.push({
-            color: [Math.random(), Math.random(), Math.random(), 1],
+            color: color,
+            state: {
+                normal: {
+                    color: color
+                },
+                highlight: {
+                    color: highlightColor
+                }
+            },
             size: 1 + Math.random() * 100,
             position: {
-                x: (Math.random() - 0.5) * 500,
-                y: (Math.random() - 0.5) * 500,
+                x: (Math.random() * 2 - 1) * 500,
+                y: (Math.random() * 2 - 1) * 500,
                 z: Math.random()
             },
             font: 'Arial',
@@ -163,13 +197,20 @@ function initWebGLMouseHandlers (domElement) {
     domElement.addEventListener('mouseout', onMouseOut, true);
     domElement.addEventListener('mousewheel', onMouseWheel, true);
     window.addEventListener('mouseup', onMouseUp, true);
+    cameraOptions.targetElement = domElement;
 }
 
 function onMouseMove (event) {
+    if (event.toElement === cameraOptions.targetElement) {
+        cameraOptions.isInsideView = true;
+    } else {
+        cameraOptions.isInsideView = false;
+    }
+
     if (cameraOptions.isDragging) {
         var translation = [event.x - cameraOptions.lastGlobalMousePosition.x, cameraOptions.lastGlobalMousePosition.y - event.y, 0];
         translation = [translation[0] * cameraOptions.zoom, translation[1] * cameraOptions.zoom, 0];
-        cameraOptions.lookAt = [cameraOptions.lookAt[0] + translation[0], cameraOptions.lookAt[1] + translation[1], cameraOptions.lookAt[2] + translation[2]];
+        cameraOptions.translateMatrix = [cameraOptions.translateMatrix[0] + translation[0], cameraOptions.translateMatrix[1] + translation[1], cameraOptions.translateMatrix[2] + translation[2]];
 
         cameraOptions.lastMousePosition = {
             x: event.offsetX,
@@ -181,6 +222,19 @@ function onMouseMove (event) {
         x: event.x,
         y: event.y
     };
+
+    if (cameraOptions.isInsideView) {
+        var offsetFromCenter = {
+                x: event.offsetX - canvas.width / 2,
+                y: canvas.height / 2 - event.offsetY
+        };
+        offsetFromCenter.x = offsetFromCenter.x * cameraOptions.zoom;
+        offsetFromCenter.y = offsetFromCenter.y * cameraOptions.zoom;
+        cameraOptions.cameraViewPosition = {
+            x: -cameraOptions.translateMatrix[0] + offsetFromCenter.x,
+            y: -cameraOptions.translateMatrix[1] + offsetFromCenter.y
+        };
+    }
 }
 
 function onMouseDown (event) {
@@ -192,6 +246,7 @@ function onMouseDown (event) {
     };
 
     cameraOptions.isDragging = true;
+    cameraOptions.isInsideView = true;
 }
 
 function onMouseOut (event) {
@@ -355,11 +410,11 @@ function createMegaBuffer (nodes) {
     // then use it to fill the current vertex buffer.
     var positionBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(allVertices), gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(allVertices), gl.DYNAMIC_DRAW);
 
     var colorBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(allColors), gl.STATIC_DRAW);
+    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(allColors), gl.DYNAMIC_DRAW);
 
     var indexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
@@ -415,7 +470,7 @@ function generateTextQuadsBuffers () {
 
         var positionBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
-        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.STATIC_DRAW);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.DYNAMIC_DRAW);
 
         var textureBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, textureBuffer);
@@ -439,8 +494,10 @@ function generateTextQuadsBuffers () {
 // Draw the scene.
 //
 function drawScene () {
-    // Clear the canvas before we start drawing on it.
+    // Update the state
+    update();
 
+    // Clear the canvas before we start drawing on it.
     gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
     // Establish the perspective with which we want to view the
@@ -450,7 +507,7 @@ function drawScene () {
     perspectiveMatrix = makeOrtho(-cameraOptions.extend[0], cameraOptions.extend[0], -cameraOptions.extend[1], cameraOptions.extend[1], 0.0, 1.0);
 
     loadIdentity();
-    mvTranslate(cameraOptions.lookAt);
+    mvTranslate(cameraOptions.translateMatrix);
 
     // Draw the nodes by binding the array buffer to the nodes vertices
     // array, setting attributes, and pushing it to GL.
@@ -490,6 +547,18 @@ function drawScene () {
 
     // request draw frame
     requestAnimationFrame(drawScene);
+}
+
+function update () {
+    for (var node of nodes) {
+        if (isInsideNode(cameraOptions.cameraViewPosition, node)) {
+            node.color = node.state.highlight.color;
+        } else {
+            node.color = node.state.normal.color;
+        }
+
+        updateNode(node);
+    }
 }
 
 function drawText () {
@@ -701,4 +770,55 @@ function setMatrixUniforms (shaderProgram) {
 
     var mvUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
     gl.uniformMatrix4fv(mvUniform, false, new Float32Array(mvMatrix.flatten()));
+}
+
+function isInsideNode (position, node) {
+    var nodeExtend = {
+        x: node.size / 2,
+        y: node.size / 2
+    };
+    return position.x <= node.position.x + nodeExtend.x &&
+            position.x >= node.position.x - nodeExtend.x &&
+            position.y <= node.position.y + nodeExtend.y &&
+            position.y >= node.position.y - nodeExtend.y;
+}
+
+function updateNode (node) {
+    var index = nodes.indexOf(node);
+    if (index < 0)
+        return;
+
+    var vertices = new Array(12);
+    var colors = new Array(16);
+
+    var size = 0.5 * node.size;
+    vertices[0] = size + node.position.x;
+    vertices[1] = size + node.position.y;
+    vertices[2] = node.position.z;
+    vertices[3] = -size + node.position.x;
+    vertices[4] = size + node.position.y;
+    vertices[5] = node.position.z;
+    vertices[6] = -size + node.position.x;
+    vertices[7] = -size + node.position.y;
+    vertices[8] = node.position.z;
+    vertices[9] = size + node.position.x;
+    vertices[10] = -size + node.position.y;
+    vertices[11] = node.position.z;
+
+    for(var i = 0; i < 4; i++) {
+        colors[i * 4] = node.color[0];
+        colors[i * 4 + 1] = node.color[1];
+        colors[i * 4 + 2] = node.color[2];
+        colors[i * 4 + 3] = node.color[3];
+    }
+
+    var vertexIndex = index * 12;
+    var colorIndex = index * 16;
+
+    var sizeOfFloat = 4;
+    gl.bindBuffer(gl.ARRAY_BUFFER, megaPositionBuffer);
+    gl.bufferSubData(gl.ARRAY_BUFFER, vertexIndex * sizeOfFloat, new Float32Array(vertices));
+
+    gl.bindBuffer(gl.ARRAY_BUFFER, megaColorBuffer);
+    gl.bufferSubData(gl.ARRAY_BUFFER, colorIndex * sizeOfFloat, new Float32Array(colors));
 }
