@@ -139,7 +139,7 @@ function makeOrtho(left, right,
 
     return $M([[2/(right-left), 0, 0, tx],
                [0, 2/(top-bottom), 0, ty],
-               [0, 0, -2/(zfar-znear), tz],
+               [0, 0, 2/(zfar-znear), tz],
                [0, 0, 0, 1]]);
 }
 

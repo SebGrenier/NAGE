@@ -33,7 +33,7 @@ var nodes = [{
     position: {
         x: 500.0,
         y: 0.0,
-        z: 0.0
+        z: 0
     },
     name: 'Bobby',
     font: 'Arial',
@@ -42,9 +42,9 @@ var nodes = [{
     color: [1.0, 0.0, 1.0, 1],
     size: 150,
     position: {
-        x: 200.0,
-        y: 200.0,
-        z: 0.0
+        x: 500.0,
+        y: 150.0,
+        z: 1
     },
     name: 'Bobbette',
     font: 'Arial',
@@ -104,7 +104,7 @@ function initNodes () {
             position: {
                 x: (Math.random() - 0.5) * 500,
                 y: (Math.random() - 0.5) * 500,
-                z: 0.0
+                z: Math.random()
             },
             font: 'Arial',
             fontSize: (5 + Math.random() * 10).toFixed(0).toString() + 'px',
@@ -233,16 +233,16 @@ function createMegaBuffer (nodes) {
         var size = 0.5 * node.size;
         allVertices[indexVertices] = size + node.position.x;
         allVertices[indexVertices+1] = size + node.position.y;
-        allVertices[indexVertices+2] = 0.0;
+        allVertices[indexVertices+2] = node.position.z;
         allVertices[indexVertices+3] = -size + node.position.x;
         allVertices[indexVertices+4] = size + node.position.y;
-        allVertices[indexVertices+5] = 0.0;
+        allVertices[indexVertices+5] = node.position.z;
         allVertices[indexVertices+6] = -size + node.position.x;
         allVertices[indexVertices+7] = -size + node.position.y;
-        allVertices[indexVertices+8] = 0.0;
+        allVertices[indexVertices+8] = node.position.z;
         allVertices[indexVertices+9] = size + node.position.x;
         allVertices[indexVertices+10] = -size + node.position.y;
-        allVertices[indexVertices+11] = 0.0;
+        allVertices[indexVertices+11] = node.position.z;
         indexVertices = indexVertices + 12;
 
         for(var i = 0; i < 4; i++) {
@@ -301,16 +301,16 @@ function generateTextQuadsBuffers () {
         var halfHeight = textureInfo.h / 2;
         vertices[0] = node.position.x + halfWidth;
         vertices[1] = node.position.y + halfHeight;
-        vertices[2] = 0.0;
+        vertices[2] = node.position.z;
         vertices[3] = node.position.x - halfWidth;
         vertices[4] = node.position.y + halfHeight;
-        vertices[5] = 0.0;
+        vertices[5] = node.position.z;
         vertices[6] = node.position.x - halfWidth;
         vertices[7] = node.position.y - halfHeight;
-        vertices[8] = 0.0;
+        vertices[8] = node.position.z;
         vertices[9] = node.position.x + halfWidth;
         vertices[10] = node.position.y - halfHeight;
-        vertices[11] = 0.0;
+        vertices[11] = node.position.z;
 
         texCoords[0] = textureInfo.sEnd;
         texCoords[1] = textureInfo.tStart;
@@ -364,7 +364,7 @@ function drawScene() {
     // and 100 units away from the camera.
     var width = 1280;
     var height = 720;
-    perspectiveMatrix = makeOrtho(-width/2.0, width/2.0, -height/2.0, height/2.0, 0, 1);
+    perspectiveMatrix = makeOrtho(-width/2.0, width/2.0, -height/2.0, height/2.0, 0.0, 1.0);
 
     loadIdentity();
 
