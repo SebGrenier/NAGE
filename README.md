@@ -1,2 +1,2 @@
 # NAGE
-Node And Graph Editor
+NAGE Ain't a Graph Editor

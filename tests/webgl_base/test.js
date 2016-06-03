@@ -9,6 +9,13 @@ var perspectiveMatrix;
 
 var textQuads = [];
 
+var textContextHelper = {
+    nextStart: 0,
+    nextLineStart: 0,
+    currentLineHeight: 0,
+    texture: null
+};
+
 var nodes = [{
     color: [1.0, 0.0, 0.0, 1],
     size: 100,
@@ -28,7 +35,7 @@ var nodes = [{
         y: 0.0,
         z: 0.0
     },
-    name: 'Bob',
+    name: 'Bobby',
     font: 'Arial',
     fontSize: '20px'
 }, {
@@ -39,7 +46,7 @@ var nodes = [{
         y: 200.0,
         z: 0.0
     },
-    name: 'Bob',
+    name: 'Bobbette',
     font: 'Arial',
     fontSize: '20px'
 }];
@@ -89,7 +96,7 @@ function start() {
 }
 
 function initNodes () {
-    var nbNodes = 10000;
+    var nbNodes = 1000;
     for (var i = 0; i < nbNodes; i++) {
         nodes.push({
             color: [Math.random(), Math.random(), Math.random(), 1],
@@ -100,8 +107,8 @@ function initNodes () {
                 z: 0.0
             },
             font: 'Arial',
-            fontSize: '5px',
-            name: (1 + Math.random() * 100).toString()
+            fontSize: (5 + Math.random() * 10).toFixed(0).toString() + 'px',
+            name: (1 + Math.random() * 100).toFixed(0).toString()
         })
     }
 }
@@ -129,7 +136,7 @@ function initWebGL() {
 }
 
 function initTextContext() {
-    var textCanvas = document.createElement("canvas");
+    //var textCanvas = document.createElement("canvas");
 
     try {
         textContext = textCanvas.getContext("2d")
@@ -277,12 +284,18 @@ function createMegaBuffer (nodes) {
 }
 
 function generateTextQuadsBuffers () {
+
+    var texture = drawTextForNodes(nodes, textContext);
+    textContextHelper.texture = texture.texture;
+
     var vertices = new Array(12);
     var texCoords = new Array(8);
     var indices = new Array(6);
     for (var node of nodes) {
-        var _textCanvas = makeTextCanvas(node.name, node.size, node.size);
-        var texture = generateTextureFromCanvas(_textCanvas);
+        //var _textCanvas = makeTextCanvas(node.name, node.size, node.size);
+        //var texture = generateTextureFromCanvas(_textCanvas);
+        var textureInfo = node.texttureInfo;
+
         var size = 0.5 * node.size;
         vertices[0] = size + node.position.x;
         vertices[1] = size + node.position.y;
@@ -297,14 +310,14 @@ function generateTextQuadsBuffers () {
         vertices[10] = -size + node.position.y;
         vertices[11] = 0.0;
 
-        texCoords[0] = 1.0;
-        texCoords[1] = 0.0;
-        texCoords[2] = 0.0;
-        texCoords[3] = 0.0;
-        texCoords[4] = 0.0;
-        texCoords[5] = 1.0;
-        texCoords[6] = 1.0;
-        texCoords[7] = 1.0;
+        texCoords[0] = textureInfo.sEnd;
+        texCoords[1] = textureInfo.tStart;
+        texCoords[2] = textureInfo.sStart;
+        texCoords[3] = textureInfo.tStart;
+        texCoords[4] = textureInfo.sStart;
+        texCoords[5] = textureInfo.tEnd;
+        texCoords[6] = textureInfo.sEnd;
+        texCoords[7] = textureInfo.tEnd;
 
         indices[0] = 0;
         indices[1] = 1;
@@ -328,8 +341,7 @@ function generateTextQuadsBuffers () {
         textQuads.push({
             position: positionBuffer,
             texCoords: textureBuffer,
-            index: indexBuffer,
-            texture: texture.texture
+            index: indexBuffer
         });
     }
 }
@@ -374,8 +386,8 @@ function drawScene() {
     gl.activeTexture(gl.TEXTURE0);
     gl.uniform1i(gl.getUniformLocation(textShader.shaderProgram, "texture"), 0);
 
+    gl.bindTexture(gl.TEXTURE_2D, textContextHelper.texture);
     for (var textQuad of textQuads) {
-        gl.bindTexture(gl.TEXTURE_2D, textQuad.texture);
 
         gl.bindBuffer(gl.ARRAY_BUFFER, textQuad.position);
         gl.vertexAttribPointer(textShader.attributeLocations['aVertexPosition'], 3, gl.FLOAT, false, 0, 0);
@@ -409,10 +421,64 @@ function drawText() {
     textContext.restore();
 }
 
+function drawTextForNodes(nodes, _context) {
+    _context.clearRect(0, 0, textCanvas.width, textCanvas.height);
+    _context.save();
+
+    for (var node of nodes) {
+        node.texttureInfo = pushTextOnContext(_context, node.name, {textAlign: "center", font: node.font, fontSize: node.fontSize});
+    }
+
+    _context.restore();
+
+    return generateTextureFromCanvas(textCanvas);
+}
+
 function drawTextOnContext(_context, text, x, y, options) {
     _context.textAlign = options.textAlign;
     _context.font  = options.fontSize + ' ' + options.font;
     _context.fillText(text, x, y);
+}
+
+function pushTextOnContext(_context, text, options) {
+    _context.textAlign = options.textAlign;
+    _context.font  = options.fontSize + ' ' + options.font;
+    var textMetrics = _context.measureText(text); // TextMetrics object
+    var textWidth = textMetrics.width;
+    var textHeight = textMetrics.fontBoundingBoxAscent + textMetrics.fontBoundingBoxDescent;
+
+    if (textContextHelper.nextStart + textWidth >= textCanvas.width) {
+        textContextHelper.nextStart = 0;
+        textContextHelper.nextLineStart += textContextHelper.currentLineHeight;
+        textContextHelper.currentLineHeight = 0;
+    }
+
+    if (textContextHelper.currentLineHeight < textHeight) {
+        textContextHelper.currentLineHeight = textHeight;
+    }
+
+    if (textContextHelper.nextLineStart + textContextHelper.currentLineHeight >= textCanvas.height) {
+        alert("Text canvas not big enough! You're fucked!");
+    }
+
+    var xStart = textContextHelper.nextStart;
+    var yStart = textContextHelper.nextLineStart;
+
+    // Lets assume center alignment for now, and fuck the baseline
+    _context.fillText(text, textContextHelper.nextStart + (textWidth / 2), textContextHelper.nextLineStart + textMetrics.fontBoundingBoxAscent);
+
+    textContextHelper.nextStart += textWidth;
+
+    return {
+        x: xStart,
+        y: yStart,
+        w: textWidth,
+        h: textHeight,
+        sStart: xStart / textCanvas.width,
+        sEnd: (xStart + textWidth) / textCanvas.width,
+        tStart: yStart / textCanvas.height,
+        tEnd: (yStart + textHeight) / textCanvas.height
+    }
 }
 
 //
