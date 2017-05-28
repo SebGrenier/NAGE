@@ -1,22 +1,22 @@
-var canvas;
-var textCanvas;
-var gl;
-var textContext;
-var mvMatrix;
-var quadShader;
-var textShader;
-var perspectiveMatrix;
+let canvas;
+let textCanvas;
+let gl;
+let textContext;
+let mvMatrix;
+let quadShader;
+let textShader;
+let perspectiveMatrix;
 
-var textQuads = [];
+let textQuads = [];
 
-var textContextHelper = {
+let textContextHelper = {
     nextStart: 0,
     nextLineStart: 0,
     currentLineHeight: 0,
     texture: null
 };
 
-var cameraOptions = {
+let cameraOptions = {
     targetElement: null,
     isInsideView: false,
     translateMatrix: [0, 0, 0],
@@ -38,7 +38,7 @@ var cameraOptions = {
     }
 };
 
-var nodes = [{
+let nodes = [{
     color: [1.0, 0.0, 0.0, 1],
     state: {
         normal: {
@@ -97,9 +97,9 @@ var nodes = [{
     fontSize: '20px'
 }];
 
-var megaPositionBuffer = null;
-var megaColorBuffer = null;
-var megaIndexBuffer = null;
+let megaPositionBuffer = null;
+let megaColorBuffer = null;
+let megaIndexBuffer = null;
 
 function start () {
     canvas = document.getElementById("glcanvas");
@@ -140,10 +140,10 @@ function start () {
 }
 
 function initNodes () {
-    var nbNodes = 2000;
-    for (var i = 0; i < nbNodes; i++) {
-        var color = [Math.random(), Math.random(), Math.random(), 1];
-        var highlightColor = [color[0] * 1.2, color[1] * 1.2, color[2] * 1.2, 1];
+    let nbNodes = 2000;
+    for (let i = 0; i < nbNodes; i++) {
+        let color = [Math.random(), Math.random(), Math.random(), 1];
+        let highlightColor = [color[0] * 1.2, color[1] * 1.2, color[2] * 1.2, 1];
         nodes.push({
             color: color,
             state: {
@@ -201,14 +201,10 @@ function initWebGLMouseHandlers (domElement) {
 }
 
 function onMouseMove (event) {
-    if (event.toElement === cameraOptions.targetElement) {
-        cameraOptions.isInsideView = true;
-    } else {
-        cameraOptions.isInsideView = false;
-    }
+    cameraOptions.isInsideView = event.toElement === cameraOptions.targetElement;
 
     if (cameraOptions.isDragging) {
-        var translation = [event.x - cameraOptions.lastGlobalMousePosition.x, cameraOptions.lastGlobalMousePosition.y - event.y, 0];
+        let translation = [event.x - cameraOptions.lastGlobalMousePosition.x, cameraOptions.lastGlobalMousePosition.y - event.y, 0];
         translation = [translation[0] * cameraOptions.zoom, translation[1] * cameraOptions.zoom, 0];
         cameraOptions.translateMatrix = [cameraOptions.translateMatrix[0] + translation[0], cameraOptions.translateMatrix[1] + translation[1], cameraOptions.translateMatrix[2] + translation[2]];
 
@@ -224,7 +220,7 @@ function onMouseMove (event) {
     };
 
     if (cameraOptions.isInsideView) {
-        var offsetFromCenter = {
+        let offsetFromCenter = {
                 x: event.offsetX - canvas.width / 2,
                 y: canvas.height / 2 - event.offsetY
         };
@@ -258,7 +254,7 @@ function onMouseUp (event) {
 }
 
 function onMouseWheel (event) {
-    var delta = Math.max(-1, Math.min(1, event.wheelDelta));
+    let delta = Math.max(-1, Math.min(1, event.wheelDelta));
 
     if (delta > 0) {
         cameraOptions.zoom -= 0.1;
@@ -276,7 +272,7 @@ function onMouseWheel (event) {
 }
 
 function initTextContext () {
-    //var textCanvas = document.createElement("canvas");
+    //let textCanvas = document.createElement("canvas");
 
     try {
         textContext = textCanvas.getContext("2d")
@@ -301,9 +297,9 @@ function makeTextCanvas (text, width, height) {
 }
 
 function generateTextureFromCanvas (_canvas) {
-    var textWidth  = _canvas.width;
-    var textHeight = _canvas.height;
-    var textTex = gl.createTexture();
+    let textWidth  = _canvas.width;
+    let textHeight = _canvas.height;
+    let textTex = gl.createTexture();
     gl.bindTexture(gl.TEXTURE_2D, textTex);
     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, _canvas);
     // make sure we can render it even if it's not a power of 2
@@ -326,14 +322,14 @@ function generateTextureFromCanvas (_canvas) {
 function initBuffers () {
 
     // Create a buffer for the nodes
-    var buffers = createMegaBuffer(nodes);
+    let buffers = createMegaBuffer(nodes);
     megaPositionBuffer = buffers.position;
     megaColorBuffer = buffers.color;
     megaIndexBuffer = buffers.index;
 }
 
 function createBuffer (node) {
-    var buffer = gl.createBuffer();
+    let buffer = gl.createBuffer();
 
     // Select the squareVerticesBuffer as the one to apply vertex
     // operations to from here out.
@@ -342,8 +338,8 @@ function createBuffer (node) {
 
     // Now create an array of vertices for the square. Note that the Z
     // coordinate is always 0 here.
-    var size = 0.5 * node.size;
-    var vertices = [
+    let size = 0.5 * node.size;
+    let vertices = [
         size,  size,  0.0,
         -size, size,  0.0,
         size,  -size, 0.0,
@@ -362,15 +358,15 @@ function createBuffer (node) {
 function createMegaBuffer (nodes) {
     // Now create an array of vertices for all nodes. Note that the Z
     // coordinate is always 0 here.
-    var allVertices = new Array(nodes.length * 12);
-    var allColors = new Array(nodes.length * 16);
-    var allIndices = new Array(nodes.length * 6);
-    var indexVertices = 0;
-    var indexColors = 0;
-    var indexIndices = 0;
-    var pushedVertex = 0;
-    for (var node of nodes) {
-        var size = 0.5 * node.size;
+    let allVertices = new Array(nodes.length * 12);
+    let allColors = new Array(nodes.length * 16);
+    let allIndices = new Array(nodes.length * 6);
+    let indexVertices = 0;
+    let indexColors = 0;
+    let indexIndices = 0;
+    let pushedVertex = 0;
+    for (let node of nodes) {
+        let size = 0.5 * node.size;
         allVertices[indexVertices] = size + node.position.x;
         allVertices[indexVertices+1] = size + node.position.y;
         allVertices[indexVertices+2] = node.position.z;
@@ -385,7 +381,7 @@ function createMegaBuffer (nodes) {
         allVertices[indexVertices+11] = node.position.z;
         indexVertices = indexVertices + 12;
 
-        for(var i = 0; i < 4; i++) {
+        for(let i = 0; i < 4; i++) {
             allColors[indexColors + i * 4] = node.color[0];
             allColors[indexColors + i * 4 + 1] = node.color[1];
             allColors[indexColors + i * 4 + 2] = node.color[2];
@@ -393,12 +389,12 @@ function createMegaBuffer (nodes) {
         }
         indexColors = indexColors + 16;
 
-        allIndices[indexIndices] = pushedVertex + 0;
+        allIndices[indexIndices] = pushedVertex;
         allIndices[indexIndices+1] = pushedVertex + 1;
         allIndices[indexIndices+2] = pushedVertex + 2;
         allIndices[indexIndices+3] = pushedVertex + 2;
         allIndices[indexIndices+4] = pushedVertex + 3;
-        allIndices[indexIndices+5] = pushedVertex + 0;
+        allIndices[indexIndices+5] = pushedVertex;
         indexIndices = indexIndices + 6;
 
         pushedVertex = pushedVertex + 4;
@@ -408,15 +404,15 @@ function createMegaBuffer (nodes) {
     // Now pass the list of vertices into WebGL to build the shape. We
     // do this by creating a Float32Array from the JavaScript array,
     // then use it to fill the current vertex buffer.
-    var positionBuffer = gl.createBuffer();
+    let positionBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(allVertices), gl.DYNAMIC_DRAW);
 
-    var colorBuffer = gl.createBuffer();
+    let colorBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, colorBuffer);
     gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(allColors), gl.DYNAMIC_DRAW);
 
-    var indexBuffer = gl.createBuffer();
+    let indexBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(allIndices), gl.STATIC_DRAW);
 
@@ -425,20 +421,20 @@ function createMegaBuffer (nodes) {
 
 function generateTextQuadsBuffers () {
 
-    var texture = drawTextForNodes(nodes, textContext);
+    let texture = drawTextForNodes(nodes, textContext);
     textContextHelper.texture = texture.texture;
 
-    var vertices = new Array(12);
-    var texCoords = new Array(8);
-    var indices = new Array(6);
-    for (var node of nodes) {
-        //var _textCanvas = makeTextCanvas(node.name, node.size, node.size);
-        //var texture = generateTextureFromCanvas(_textCanvas);
-        var textureInfo = node.texttureInfo;
+    let vertices = new Array(12);
+    let texCoords = new Array(8);
+    let indices = new Array(6);
+    for (let node of nodes) {
+        //let _textCanvas = makeTextCanvas(node.name, node.size, node.size);
+        //let texture = generateTextureFromCanvas(_textCanvas);
+        let textureInfo = node.texttureInfo;
 
-        var size = 0.5 * node.size;
-        var halfWidth = textureInfo.w / 2;
-        var halfHeight = textureInfo.h / 2;
+        let size = 0.5 * node.size;
+        let halfWidth = textureInfo.w / 2;
+        let halfHeight = textureInfo.h / 2;
         vertices[0] = node.position.x + halfWidth;
         vertices[1] = node.position.y + halfHeight;
         vertices[2] = node.position.z;
@@ -468,15 +464,15 @@ function generateTextQuadsBuffers () {
         indices[4] = 3;
         indices[5] = 0;
 
-        var positionBuffer = gl.createBuffer();
+        let positionBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, positionBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertices), gl.DYNAMIC_DRAW);
 
-        var textureBuffer = gl.createBuffer();
+        let textureBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, textureBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(texCoords), gl.STATIC_DRAW);
 
-        var indexBuffer = gl.createBuffer();
+        let indexBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
         gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indices), gl.STATIC_DRAW);
 
@@ -530,7 +526,7 @@ function drawScene () {
     gl.uniform1i(gl.getUniformLocation(textShader.shaderProgram, "texture"), 0);
 
     gl.bindTexture(gl.TEXTURE_2D, textContextHelper.texture);
-    for (var textQuad of textQuads) {
+    for (let textQuad of textQuads) {
 
         gl.bindBuffer(gl.ARRAY_BUFFER, textQuad.position);
         gl.vertexAttribPointer(textShader.attributeLocations['aVertexPosition'], 3, gl.FLOAT, false, 0, 0);
@@ -550,7 +546,7 @@ function drawScene () {
 }
 
 function update () {
-    for (var node of nodes) {
+    for (let node of nodes) {
         if (isInsideNode(cameraOptions.cameraViewPosition, node)) {
             node.color = node.state.highlight.color;
         } else {
@@ -567,7 +563,7 @@ function drawText () {
     textContext.save();
 
     textContext.translate(textCanvas.width/2, textCanvas.height/2);
-    for (var node of nodes) {
+    for (let node of nodes) {
         textContext.textAlign = 'center';
         textContext.font  = node.fontSize + ' ' + node.font;
         textContext.fillText(node.name, node.position.x, node.position.y);
@@ -580,7 +576,7 @@ function drawTextForNodes (nodes, _context) {
     _context.clearRect(0, 0, textCanvas.width, textCanvas.height);
     _context.save();
 
-    for (var node of nodes) {
+    for (let node of nodes) {
         node.texttureInfo = pushTextOnContext(_context, node.name, {textAlign: "center", font: node.font, fontSize: node.fontSize});
     }
 
@@ -598,9 +594,9 @@ function drawTextOnContext (_context, text, x, y, options) {
 function pushTextOnContext (_context, text, options) {
     _context.textAlign = options.textAlign;
     _context.font  = options.fontSize + ' ' + options.font;
-    var textMetrics = _context.measureText(text); // TextMetrics object
-    var textWidth = textMetrics.width;
-    var textHeight = textMetrics.fontBoundingBoxAscent + textMetrics.fontBoundingBoxDescent;
+    let textMetrics = _context.measureText(text); // TextMetrics object
+    let textWidth = textMetrics.width;
+    let textHeight = textMetrics.fontBoundingBoxAscent + textMetrics.fontBoundingBoxDescent;
 
     if (textContextHelper.nextStart + textWidth >= textCanvas.width) {
         textContextHelper.nextStart = 0;
@@ -616,8 +612,8 @@ function pushTextOnContext (_context, text, options) {
         alert("Text canvas not big enough! You're fucked!");
     }
 
-    var xStart = textContextHelper.nextStart;
-    var yStart = textContextHelper.nextLineStart;
+    let xStart = textContextHelper.nextStart;
+    let yStart = textContextHelper.nextLineStart;
 
     // Lets assume center alignment for now, and fuck the baseline
     _context.fillText(text, textContextHelper.nextStart + (textWidth / 2), textContextHelper.nextLineStart + textMetrics.fontBoundingBoxAscent);
@@ -650,12 +646,12 @@ function initShader (vertexShader, fragmentShader, uniforms, attributes) {
     uniforms = uniforms || [];
     attributes = attributes || [];
 
-    var fragmentShaderProg = getShader(gl, fragmentShader);
-    var vertexShaderProg = getShader(gl, vertexShader);
+    let fragmentShaderProg = getShader(gl, fragmentShader);
+    let vertexShaderProg = getShader(gl, vertexShader);
 
     // Create the shader program
 
-    var shaderProgram = gl.createProgram();
+    let shaderProgram = gl.createProgram();
     gl.attachShader(shaderProgram, vertexShaderProg);
     gl.attachShader(shaderProgram, fragmentShaderProg);
     gl.linkProgram(shaderProgram);
@@ -667,14 +663,14 @@ function initShader (vertexShader, fragmentShader, uniforms, attributes) {
 
     gl.useProgram(shaderProgram);
 
-    var uniformLocations = {};
-    // for (var uniform of uniforms) {
+    let uniformLocations = {};
+    // for (let uniform of uniforms) {
     //
     // }
 
-    var attributeLocations = {};
-    for (var attribute of attributes) {
-        var attributeLocation = gl.getAttribLocation(shaderProgram, attribute);
+    let attributeLocations = {};
+    for (let attribute of attributes) {
+        let attributeLocation = gl.getAttribLocation(shaderProgram, attribute);
         gl.enableVertexAttribArray(attributeLocation);
         attributeLocations[attribute] = attributeLocation;
     }
@@ -695,7 +691,7 @@ function initShader (vertexShader, fragmentShader, uniforms, attributes) {
 // looking for a script with the specified ID.
 //
 function getShader (gl, id) {
-    var shaderScript = document.getElementById(id);
+    let shaderScript = document.getElementById(id);
 
     // Didn't find an element with the specified ID; abort.
 
@@ -706,11 +702,11 @@ function getShader (gl, id) {
     // Walk through the source element's children, building the
     // shader source string.
 
-    var theSource = "";
-    var currentChild = shaderScript.firstChild;
+    let theSource = "";
+    let currentChild = shaderScript.firstChild;
 
     while(currentChild) {
-        if (currentChild.nodeType == 3) {
+        if (currentChild.nodeType === 3) {
             theSource += currentChild.textContent;
         }
 
@@ -720,11 +716,11 @@ function getShader (gl, id) {
     // Now figure out what type of shader script we have,
     // based on its MIME type.
 
-    var shader;
+    let shader;
 
-    if (shaderScript.type == "x-shader/x-fragment") {
+    if (shaderScript.type === "x-shader/x-fragment") {
         shader = gl.createShader(gl.FRAGMENT_SHADER);
-    } else if (shaderScript.type == "x-shader/x-vertex") {
+    } else if (shaderScript.type === "x-shader/x-vertex") {
         shader = gl.createShader(gl.VERTEX_SHADER);
     } else {
         return null;  // Unknown shader type
@@ -765,15 +761,15 @@ function mvTranslate (v) {
 }
 
 function setMatrixUniforms (shaderProgram) {
-    var pUniform = gl.getUniformLocation(shaderProgram, "uPMatrix");
+    let pUniform = gl.getUniformLocation(shaderProgram, "uPMatrix");
     gl.uniformMatrix4fv(pUniform, false, new Float32Array(perspectiveMatrix.flatten()));
 
-    var mvUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
+    let mvUniform = gl.getUniformLocation(shaderProgram, "uMVMatrix");
     gl.uniformMatrix4fv(mvUniform, false, new Float32Array(mvMatrix.flatten()));
 }
 
 function isInsideNode (position, node) {
-    var nodeExtend = {
+    let nodeExtend = {
         x: node.size / 2,
         y: node.size / 2
     };
@@ -784,14 +780,14 @@ function isInsideNode (position, node) {
 }
 
 function updateNode (node) {
-    var index = nodes.indexOf(node);
+    let index = nodes.indexOf(node);
     if (index < 0)
         return;
 
-    var vertices = new Array(12);
-    var colors = new Array(16);
+    let vertices = new Array(12);
+    let colors = new Array(16);
 
-    var size = 0.5 * node.size;
+    let size = 0.5 * node.size;
     vertices[0] = size + node.position.x;
     vertices[1] = size + node.position.y;
     vertices[2] = node.position.z;
@@ -805,17 +801,17 @@ function updateNode (node) {
     vertices[10] = -size + node.position.y;
     vertices[11] = node.position.z;
 
-    for(var i = 0; i < 4; i++) {
+    for(let i = 0; i < 4; i++) {
         colors[i * 4] = node.color[0];
         colors[i * 4 + 1] = node.color[1];
         colors[i * 4 + 2] = node.color[2];
         colors[i * 4 + 3] = node.color[3];
     }
 
-    var vertexIndex = index * 12;
-    var colorIndex = index * 16;
+    let vertexIndex = index * 12;
+    let colorIndex = index * 16;
 
-    var sizeOfFloat = 4;
+    let sizeOfFloat = 4;
     gl.bindBuffer(gl.ARRAY_BUFFER, megaPositionBuffer);
     gl.bufferSubData(gl.ARRAY_BUFFER, vertexIndex * sizeOfFloat, new Float32Array(vertices));
 
